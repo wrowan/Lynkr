@@ -189,7 +189,18 @@ function normaliseMessages(payload, options = {}) {
       } else {
         content = rawContent;
       }
-      normalised.push({ role, content });
+      const entry = { role, content };
+      // Preserve OpenAI tool-related fields that providers require
+      if (role === "tool" && message.tool_call_id) {
+        entry.tool_call_id = message.tool_call_id;
+      }
+      if (role === "tool" && message.name) {
+        entry.name = message.name;
+      }
+      if (role === "assistant" && Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+        entry.tool_calls = message.tool_calls;
+      }
+      normalised.push(entry);
     }
   }
   return normalised;
