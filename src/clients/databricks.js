@@ -177,12 +177,24 @@ async function invokeDatabricks(body) {
     throw new Error("Databricks configuration is missing required URL.");
   }
 
-  // Create a copy of body to avoid mutating the original
-  const databricksBody = { ...body };
+  // Convert messages from Anthropic format to OpenAI format (Databricks uses OpenAI format)
+  const messages = convertAnthropicMessagesToOpenRouter(body.messages || []);
+
+  // Anthropic uses separate 'system' field, OpenAI needs it as first message
+  if (body.system) {
+    messages.unshift({
+      role: "system",
+      content: body.system
+    });
+  }
 
   // Inject standard tools if client didn't send any (passthrough mode)
-  if (!Array.isArray(databricksBody.tools) || databricksBody.tools.length === 0) {
-    databricksBody.tools = STANDARD_TOOLS;
+  let toolsToSend = body.tools;
+  let toolsInjected = false;
+
+  if (!Array.isArray(toolsToSend) || toolsToSend.length === 0) {
+    toolsToSend = STANDARD_TOOLS;
+    toolsInjected = true;
     logger.info({
       injectedToolCount: STANDARD_TOOLS.length,
       injectedToolNames: STANDARD_TOOLS.map(t => t.name),
@@ -190,24 +202,24 @@ async function invokeDatabricks(body) {
     }, "=== INJECTING STANDARD TOOLS (Databricks) ===");
   }
 
-  // Convert Anthropic format tools to OpenAI format (Databricks uses OpenAI format)
-  if (Array.isArray(databricksBody.tools) && databricksBody.tools.length > 0) {
-    // Check if tools are already in OpenAI format (have type: "function")
-    const alreadyConverted = databricksBody.tools[0]?.type === "function";
-
-    if (!alreadyConverted) {
-      databricksBody.tools = convertAnthropicToolsToOpenRouter(databricksBody.tools);
-      logger.debug({
-        convertedToolCount: databricksBody.tools.length,
-        convertedToolNames: databricksBody.tools.map(t => t.function?.name),
-      }, "Converted tools to OpenAI format for Databricks");
-    } else {
-      logger.debug({
-        toolCount: databricksBody.tools.length,
-        toolNames: databricksBody.tools.map(t => t.function?.name),
-      }, "Tools already in OpenAI format, skipping conversion");
-    }
+  // Convert Anthropic format tools to OpenAI format
+  const alreadyConverted = toolsToSend[0]?.type === "function";
+  if (!alreadyConverted) {
+    toolsToSend = convertAnthropicToolsToOpenRouter(toolsToSend);
+    logger.debug({
+      convertedToolCount: toolsToSend.length,
+      convertedToolNames: toolsToSend.map(t => t.function?.name),
+    }, "Converted tools to OpenAI format for Databricks");
   }
+
+  const databricksBody = {
+    model: body.model || config.modelProvider.defaultModel,
+    messages,
+    temperature: body.temperature ?? 0.7,
+    max_tokens: body.max_tokens ?? 4096,
+    stream: body.stream ?? false,
+    tools: toolsToSend,
+  };
 
   const headers = {
     Authorization: `Bearer ${config.databricks.apiKey}`,
