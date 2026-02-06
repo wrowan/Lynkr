@@ -176,6 +176,38 @@ describe("Enhanced Format Conversion", () => {
       });
     });
 
+    describe("Normalised message passthrough", () => {
+      it("should preserve tool_call_id on tool messages with string content", () => {
+        const messages = [
+          {
+            role: "assistant",
+            content: "",
+            tool_calls: [{
+              id: "call_abc123",
+              type: "function",
+              function: { name: "Read", arguments: '{"file_path":"/tmp/test"}' }
+            }]
+          },
+          {
+            role: "tool",
+            tool_call_id: "call_abc123",
+            name: "Read",
+            content: "File contents here"
+          }
+        ];
+
+        const result = openrouterUtils.convertAnthropicMessagesToOpenRouter(messages);
+        const toolMsg = result.find(m => m.role === "tool");
+        assert.ok(toolMsg, "Tool message should be present");
+        assert.strictEqual(toolMsg.tool_call_id, "call_abc123");
+        assert.strictEqual(toolMsg.name, "Read");
+
+        const assistantMsg = result.find(m => m.role === "assistant");
+        assert.ok(assistantMsg.tool_calls, "tool_calls should be preserved");
+        assert.strictEqual(assistantMsg.tool_calls[0].id, "call_abc123");
+      });
+    });
+
     describe("Tool Conversion", () => {
       it("should convert Anthropic tools to OpenRouter format", () => {
         const anthropicTools = [

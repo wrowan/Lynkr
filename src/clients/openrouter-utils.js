@@ -130,7 +130,7 @@ function convertAnthropicMessagesToOpenRouter(anthropicMessages) {
         });
       }
     }
-    // Simple string content
+    // Simple string content (may already be in OpenAI format from normaliseMessages)
     else {
       logger.debug({
         role: msg.role,
@@ -139,10 +139,17 @@ function convertAnthropicMessagesToOpenRouter(anthropicMessages) {
         contentLength: content?.length || 0
       }, "Processing Anthropic message (string content)");
 
-      converted.push({
+      const entry = {
         role: msg.role,
         content: content || ''
-      });
+      };
+
+      // Preserve OpenAI-format fields that normaliseMessages already set
+      if (msg.tool_call_id) entry.tool_call_id = msg.tool_call_id;
+      if (msg.name) entry.name = msg.name;
+      if (msg.tool_calls) entry.tool_calls = msg.tool_calls;
+
+      converted.push(entry);
     }
   }
 
