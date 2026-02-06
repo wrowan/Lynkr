@@ -7,7 +7,7 @@ const { getMetricsCollector } = require("../observability/metrics");
 const { getHealthTracker } = require("../observability/health-tracker");
 const logger = require("../logger");
 const { STANDARD_TOOLS } = require("./standard-tools");
-const { convertAnthropicToolsToOpenRouter } = require("./openrouter-utils");
+const { convertAnthropicToolsToOpenRouter, convertAnthropicMessagesToOpenRouter } = require("./openrouter-utils");
 const {
   detectModelFamily
 } = require("./bedrock-utils");
