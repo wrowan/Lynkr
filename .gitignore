@@ -13,7 +13,8 @@ monitor-agents.sh
 .env.test
 .env.local
 test-agents-simple.js
-.claude/
+.claude/*
+!.claude/docs/
 
 AGENT_TYPES_PLAN.md
 README_SEO_OPTIMIZATION_PLAN.md
